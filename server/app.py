@@ -21,14 +21,15 @@ def home():
 @app.route('/bakeries')
 def bakeries():
     bakeries = [bakery.to_dict() for bakery in Bakery.query.all()]
-    return make_response(  bakeries,   200  )
+    return make_response(bakeries, 200)
 
 @app.route('/bakeries/<int:id>')
 def bakery_by_id(id):
-
     bakery = Bakery.query.filter_by(id=id).first()
+    if not bakery:
+        return make_response({"error": "Bakery not found"}, 404)
     bakery_serialized = bakery.to_dict()
-    return make_response ( bakery_serialized, 200  )
+    return make_response(bakery_serialized, 200)
 
 @app.route('/baked_goods/by_price')
 def baked_goods_by_price():
@@ -36,14 +37,59 @@ def baked_goods_by_price():
     baked_goods_by_price_serialized = [
         bg.to_dict() for bg in baked_goods_by_price
     ]
-    return make_response( baked_goods_by_price_serialized, 200  )
-   
+    return make_response(baked_goods_by_price_serialized, 200)
 
 @app.route('/baked_goods/most_expensive')
 def most_expensive_baked_good():
     most_expensive = BakedGood.query.order_by(BakedGood.price.desc()).limit(1).first()
+    if not most_expensive:
+        return make_response({"error": "No baked goods found"}, 404)
     most_expensive_serialized = most_expensive.to_dict()
-    return make_response( most_expensive_serialized,   200  )
+    return make_response(most_expensive_serialized, 200)
+
+# POST
+@app.route('/baked_goods', methods=['POST'])
+def create_baked_good():
+    data = request.form
+    new_baked_good = BakedGood(
+        name=data.get('name'),
+        price=data.get('price'),
+        bakery_id=data.get('bakery_id')
+    )
+    db.session.add(new_baked_good)
+    db.session.commit()
+
+    return make_response(new_baked_good.to_dict(), 201)
+
+# PATCH
+@app.route('/bakeries/<int:id>', methods=['PATCH'])
+def update_bakery(id):
+    bakery = db.session.get(Bakery, id)
+    
+    if not bakery:
+        return make_response({"error": "Bakery not found"}, 404)
+    
+    data = request.form
+    bakery.name = data.get('name')
+
+    db.session.commit()
+    
+    return make_response(bakery.to_dict(), 200)
+
+
+# DELETE
+@app.route('/baked_goods/<int:id>', methods=['DELETE'])
+def delete_baked_good(id):
+    baked_good = db.session.get(BakedGood, id)
+    
+    if not baked_good:
+        return make_response({"error": "Baked good not found"}, 404)
+    
+    db.session.delete(baked_good)
+    db.session.commit()
+
+    return make_response({"message": "Baked good successfully deleted"}, 200)
+
 
 if __name__ == '__main__':
     app.run(port=5555, debug=True)
